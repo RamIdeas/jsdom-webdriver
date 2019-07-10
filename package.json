@@ -1,0 +1,49 @@
+{
+    "name": "jsdom-webdriver",
+    "version": "0.0.1",
+    "description": "A JSDOM implementation of the WebDriver spec",
+    "main": "index.js",
+    "bin": {
+        "jsdom-webdriver": "./service.js"
+    },
+    "scripts": {
+        "build": "pkg . --out-path ./bin",
+        "build:watch": "nodemon --ext js --exec 'npm run build'",
+        "build:dev:macos": "rm -f ./bin/jsdom-webdriver-macos && mkdir -p ./bin && echo '#!/usr/bin/env node\nrequire(`../service.js`)' >> ./bin/jsdom-webdriver-macos && chmod +x ./bin/jsdom-webdriver-macos",
+        "build:dev:linux": "rm -f ./bin/jsdom-webdriver-linux && mkdir -p ./bin && echo '#!/usr/bin/env node\nrequire(`../service.js`)' >> ./bin/jsdom-webdriver-linux && chmod +x ./bin/jsdom-webdriver-linux",
+        "test": "NODE_ENV=test node ./test.js",
+        "test:watch": "nodemon --ext js --exec 'npm test'",
+        "test:watch:macos": "npm run build:dev:macos && npm run test:watch",
+        "test:watch:linux": "npm run build:dev:linux && npm run test:watch"
+    },
+    "dependencies": {
+        "arg": "^4.1.0",
+        "express": "^4.17.1",
+        "is-docker": "^2.0.0",
+        "jest-dom": "^3.5.0",
+        "jsdom": "^15.1.1",
+        "selenium-webdriver": "^4.0.0-alpha.1",
+        "tough-cookie": "^3.0.1"
+    },
+    "devDependencies": {
+        "@types/jest": "^24.0.15",
+        "@types/node": "^12.0.10",
+        "jest": "^24.8.0",
+        "nodemon": "^1.19.1",
+        "pkg": "^4.4.0"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "prettier": {
+        "printWidth": 120,
+        "trailingComma": "all",
+        "tabWidth": 4,
+        "singleQuote": true
+    },
+    "jest": {
+        "collectCoverageFrom": [
+            "server.js"
+        ]
+    }
+}
