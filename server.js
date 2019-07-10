@@ -1010,7 +1010,7 @@ GET('/session/{session id}/element/{element id}/screenshot', {
 });
 
 const startServer = port => {
-    app.listen(port, function() {
+    return app.listen(port, function() {
         console.log('Server started on port ' + this.address().port);
     });
 };

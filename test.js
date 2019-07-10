@@ -1,6 +1,7 @@
 const http = require('http');
 const { until } = require('selenium-webdriver');
 const { ServiceBuilder, Driver, getDefaultService } = require('./webdriver');
+const { startServer } = require('./server');
 
 process.on('unhandledPromiseRejected', err => {
     console.log(err);
@@ -110,22 +111,27 @@ let server;
 let service;
 /** @type import('selenium-webdriver').WebDriver */
 let driver;
+
+/** @type http.Server */
+let mockAppServer;
 let url = 'http://localhost:...';
 const getUrl = (path = '/') => url + path;
 
 beforeAll(async () => {
-    server = http.createServer(serverHandler);
+    mockAppServer = http.createServer(serverHandler);
     await new Promise(resolve => {
-        server.listen(() => {
-            url = `http://localhost:${server.address().port}`;
+        mockAppServer.listen(() => {
+            url = `http://localhost:${mockAppServer.address().port}`;
             console.log(`Test server available at ${url}`);
-            resolve(server);
+            resolve(mockAppServer);
         });
     });
 
+    server = startServer();
+
     service = new ServiceBuilder()
         .setStdio('inherit')
-        .setPort()
+        .setPort(server.address().port)
         .build();
 });
 
@@ -137,7 +143,7 @@ afterEach(async () => {
     await driver.quit();
 });
 afterAll(async () => {
-    server.close();
+    mockAppServer.close();
     service.kill();
 });
 
