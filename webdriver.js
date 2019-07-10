@@ -8,12 +8,6 @@ const remote = require('selenium-webdriver/remote');
 const webdriver = require('selenium-webdriver/lib/webdriver');
 const { Browser, Capabilities } = require('selenium-webdriver/lib/capabilities');
 
-const JSDOM_DRIVER_EXE = {
-    win32: 'jsdom-webdriver-win.exe',
-    darwin: 'jsdom-webdriver-macos',
-    linux: 'jsdom-webdriver-linux',
-}[process.platform];
-
 /**
  * _Synchronously_ attempts to locate the edge driver executable on the current
  * system.
@@ -21,11 +15,11 @@ const JSDOM_DRIVER_EXE = {
  * @return {?string} the located executable, or `null`.
  */
 function locateSynchronously() {
-    return io.findInPath(JSDOM_DRIVER_EXE, true);
+    return process.platform === 'win32' ? io.findInPath(EDGEDRIVER_EXE, true) : null;
 }
 
 /**
- * Class for managing JSDOMDriver specific options.
+ * Class for managing MicrosoftEdgeDriver specific options.
  */
 class Options extends Capabilities {
     /**
@@ -34,13 +28,13 @@ class Options extends Capabilities {
      */
     constructor(other = undefined) {
         super(other);
-        this.setBrowserName('JSDOM');
+        this.setBrowserName(Browser.EDGE);
     }
 }
 
 /**
  * Creates {@link remote.DriverService} instances that manage a
- * JSDOMDriver server in a child process.
+ * MicrosoftEdgeDriver server in a child process.
  */
 class ServiceBuilder extends remote.DriverService.Builder {
     /**
@@ -53,7 +47,14 @@ class ServiceBuilder extends remote.DriverService.Builder {
     constructor(opt_exe) {
         let exe = opt_exe || locateSynchronously();
         if (!exe) {
-            throw Error('The jsdom-webdriver binary could not be found.');
+            throw Error(
+                'The ' +
+                    EDGEDRIVER_EXE +
+                    ' could not be found on the current PATH. ' +
+                    'Please download the latest version of the MicrosoftEdgeDriver from ' +
+                    'https://www.microsoft.com/en-us/download/details.aspx?id=48212 and ' +
+                    'ensure it can be found on your PATH.',
+            );
         }
 
         super(exe);
@@ -99,11 +100,7 @@ function setDefaultService(service) {
  */
 function getDefaultService() {
     if (!defaultService) {
-        const builder = new ServiceBuilder();
-        // if (process.env.NODE_ENV === 'test') {
-        builder.setStdio('inherit');
-        // }
-        defaultService = builder.build();
+        defaultService = new ServiceBuilder().build();
     }
     return defaultService;
 }
