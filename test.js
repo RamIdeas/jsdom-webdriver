@@ -1,4 +1,5 @@
 const http = require('http');
+const stoppable = require('stoppable');
 const { until } = require('selenium-webdriver');
 const { ServiceBuilder, Driver, getDefaultService } = require('./webdriver');
 const { startServer } = require('./server');
@@ -68,7 +69,7 @@ function serverHandler(req, res) {
         <label id="label-other">
             <input type="checkbox" name="option-other" />
             Other
-            <input type="text" name="input-other" placeholder="Please specify others" disabled />
+            <input type="text" name="input-other" placeholder="Please specify others" disabled style="display: none;" />
         </label>
     </div>
     <script>
@@ -107,8 +108,6 @@ function serverHandler(req, res) {
 
 /** @type http.Server */
 let server;
-/** @type import('selenium-webdriver/remote').DriverService */
-let service;
 /** @type import('selenium-webdriver').WebDriver */
 let driver;
 
@@ -118,33 +117,26 @@ let url = 'http://localhost:...';
 const getUrl = (path = '/') => url + path;
 
 beforeAll(async () => {
-    mockAppServer = http.createServer(serverHandler);
     await new Promise(resolve => {
-        mockAppServer.listen(() => {
+        mockAppServer = http.createServer(serverHandler).listen(() => {
             url = `http://localhost:${mockAppServer.address().port}`;
             console.log(`Test server available at ${url}`);
             resolve(mockAppServer);
         });
+        mockAppServer = stoppable(mockAppServer);
     });
 
     server = startServer();
-
-    service = new ServiceBuilder()
-        .setStdio('inherit')
-        .setPort(server.address().port)
-        .build();
 });
-
 beforeEach(() => {
-    driver = Driver.createSession(undefined, service);
+    driver = Driver.createSessionWithExistingService(undefined, `http://localhost:${server.address().port}`);
 });
-
 afterEach(async () => {
     await driver.quit();
 });
 afterAll(async () => {
-    mockAppServer.close();
-    service.kill();
+    await new Promise(r => mockAppServer.stop(r));
+    await new Promise(r => server.close(r));
 });
 
 test('root', async () => {
@@ -212,7 +204,7 @@ test('cookies', async () => {
     await expect(driver.findElement({ css: 'dl dd:nth-of-type(2)' }).getText()).resolves.toBe('2nd');
 });
 
-test.only('interactive', async () => {
+test('interactive', async () => {
     await driver.get(getUrl('/interactive'));
 
     await expect(driver.getCurrentUrl()).resolves.toBe(getUrl('/interactive'));
@@ -264,7 +256,7 @@ test.only('interactive', async () => {
 
     await checkboxOther.click();
 
-    await driver.wait(until.elementIsVisible(inputOther));
+    // await driver.wait(until.elementIsVisible(inputOther));
     await expect(inputOther.isDisplayed()).resolves.toBe(true);
     await expect(inputOther.isEnabled()).resolves.toBe(true);
 
