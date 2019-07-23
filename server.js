@@ -7,6 +7,7 @@ const { JSDOM, ResourceLoader, CookieJar } = require('jsdom');
 const { Cookie } = require('tough-cookie');
 const isDocker = require('is-docker');
 const { toBeVisible } = require('jest-dom/dist/to-be-visible');
+const stringSimilarity = require('string-similarity');
 
 const ELEMENT = 'element-6066-11e4-a52e-4f735466cecf';
 
@@ -26,14 +27,16 @@ const resourceLoader = new CustomResourceLoader({ strictSSL: false });
 
 https.globalAgent.options.rejectUnauthorized = false;
 
-const readSeleniumScript = command =>
-    fs.readFileSync(path.resolve(__dirname, `./selenium-scripts/${command}.js`), 'utf-8');
-const writeSeleniumScript = (command, script) =>
-    fs.writeFileSync(path.resolve(__dirname, `./selenium-scripts/${command}.js`), script);
+const cacheSeleniumScriptForComparison = command => {
+    const scriptPath = require.resolve(`selenium-webdriver/lib/atoms/${command}.js`);
+    const script = fs.readFileSync(scriptPath, 'utf-8');
 
-const SELENIUM_SCRIPTS = {
-    isDisplayed: readSeleniumScript('isDisplayed'),
+    SELENIUM_SCRIPTS[command] = script;
 };
+
+const SELENIUM_SCRIPTS = {};
+cacheSeleniumScriptForComparison('is-displayed');
+cacheSeleniumScriptForComparison('get-attribute');
 
 const REQUEST = (method, app) => (path, { cmd, validate, handle }) => {
     path = path.replace(/\{(.*?)\}/g, (_, $1) => ':' + $1.replace(/\s/g, '_'));
@@ -746,26 +749,21 @@ POST('/session/{session id}/execute/sync', {
         /** @type import('jsdom').JSDOM */
         const jsdom = session.jsdom;
 
-        switch (script) {
-            case SELENIUM_SCRIPTS.isDisplayed: {
-                const element_id = args[0][ELEMENT];
-                const element = session.getElement(element_id);
+        const { bestMatch } = stringSimilarity.findBestMatch(script, [...Object.values(SELENIUM_SCRIPTS)]);
 
-                // console.log(element.parentElement.innerHTML);
-                // console.log(session.jsdom.window.document.querySelectorAll('[role="row"]'));
+        if (bestMatch.rating >= 0.99) {
+            switch (bestMatch.target) {
+                case SELENIUM_SCRIPTS['is-displayed']: {
+                    const element_id = args[0][ELEMENT];
+                    const element = session.getElement(element_id);
 
-                return toBeVisible(element).pass;
+                    return toBeVisible(element).pass;
+                }
+                // TODO: other canned selenium-scripts
+                case SELENIUM_SCRIPTS['get-attribute']:
+                    break;
             }
-            // TODO: other canned selenium-scripts
-            default: {
-                const hash = require('crypto')
-                    .createHash('md5')
-                    .update(script)
-                    .digest()
-                    .toString('hex');
-                writeSeleniumScript(hash, script);
-            }
-        }
+        } else console.log(bestMatch.rating);
 
         return jsdom.window.eval(`
             (function() {
