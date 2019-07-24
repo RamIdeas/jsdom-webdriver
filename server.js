@@ -52,9 +52,11 @@ const REQUEST = (method, app) => (path, { cmd, validate, handle }) => {
                 : req.body,
         );
 
-        const error = await validate(req.params, req.body);
-
-        // if (error === null) return res.status(404);
+        const { session_id, element_id } = req.params;
+        const session = ctx.sessions.get(session_id);
+        const element = session && session.getElement(element_id);
+        const args = { ...req.params, ...req.body, session, element };
+        const error = await validate(args);
 
         if (error !== undefined) {
             const {
@@ -69,7 +71,7 @@ const REQUEST = (method, app) => (path, { cmd, validate, handle }) => {
         }
 
         try {
-            const result = await handle(req.params, req.body);
+            const result = await handle(args);
             log('RESULT', result);
 
             return res.json({ value: result });
@@ -101,8 +103,8 @@ const ctx = {
 GET('/status', {
     description: 'Status',
     docs: 'https://github.com/jlipps/simple-wd-spec#status',
-    validate(params, body) {},
-    handle(params, body) {
+    validate() {},
+    handle() {
         return { ready: true, message: 'server ready' };
     },
 });
@@ -110,8 +112,8 @@ GET('/status', {
 POST('/session', {
     cmd: 'New Session',
     docs: 'https://github.com/jlipps/simple-wd-spec#new-session',
-    validate(params, body) {},
-    handle(params, body) {
+    validate() {},
+    handle(args) {
         const ID_TO_ELEMENTS = Symbol('Elements Map By Id');
         const ELEMENTS_TO_ID = Symbol('ElementIds Map By Element');
 
@@ -167,10 +169,8 @@ POST('/session', {
 DELETE('/session/{session id}', {
     cmd: 'Delete Session',
     docs: 'https://github.com/jlipps/simple-wd-spec#delete-session',
-    validate(params, body) {},
-    handle({ session_id }, body) {
-        const session = ctx.sessions.get(session_id);
-
+    validate(args) {},
+    handle({ session_id, session }) {
         session.jsdom.window.close();
         ctx.sessions.delete(session_id);
     },
@@ -179,32 +179,30 @@ DELETE('/session/{session id}', {
 GET('/session/{session id}/timeouts', {
     cmd: 'Get Timeouts',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-timeouts',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 POST('/session/{session id}/timeouts', {
     cmd: 'Set Timeouts',
     docs: 'https://github.com/jlipps/simple-wd-spec#set-timeouts',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 POST('/session/{session id}/url', {
     cmd: 'Go',
     docs: 'https://github.com/jlipps/simple-wd-spec#go',
-    validate(params, body) {},
-    handle: async function handle({ session_id }, { url }) {
-        const session = ctx.sessions.get(session_id);
-
+    validate(args) {},
+    async handle({ session, url }) {
         console.warn('GOING', session.jsdom.window.location.href, '->', url);
         session.jsdom = await JSDOM.fromURL(url, {
             referrer: session.jsdom.window.location.href,
@@ -262,10 +260,8 @@ POST('/session/{session id}/url', {
 GET('/session/{session id}/url', {
     cmd: 'Get Current URL',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-current-url',
-    validate(params, body) {},
-    handle({ session_id }, body) {
-        const session = ctx.sessions.get(session_id);
-
+    validate(args) {},
+    handle({ session }) {
         return session.jsdom.window.location.href;
     },
 });
@@ -273,31 +269,30 @@ GET('/session/{session id}/url', {
 POST('/session/{session id}/back', {
     cmd: 'Back',
     docs: 'https://github.com/jlipps/simple-wd-spec#back',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 POST('/session/{session id}/forward', {
     cmd: 'Forward',
     docs: 'https://github.com/jlipps/simple-wd-spec#forward',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 POST('/session/{session id}/refresh', {
     cmd: 'Refresh',
     docs: 'https://github.com/jlipps/simple-wd-spec#refresh',
-    validate(params, body) {},
-    async handle({ session_id }, body) {
-        const session = ctx.sessions.get(session_id);
+    validate(args) {},
+    async handle({ session }) {
         const old = session.jsdom;
         const { href } = session.jsdom.window.location;
 
@@ -316,10 +311,8 @@ POST('/session/{session id}/refresh', {
 GET('/session/{session id}/title', {
     cmd: 'Get Title',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-title',
-    validate(params, body) {},
-    handle({ session_id }, body) {
-        const session = ctx.sessions.get(session_id);
-
+    validate(args) {},
+    handle({ session }) {
         return session.jsdom.window.document.title;
     },
 });
@@ -327,21 +320,19 @@ GET('/session/{session id}/title', {
 GET('/session/{session id}/window', {
     cmd: 'Get Window Handle',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-window-handle',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 DELETE('/session/{session id}/window', {
     cmd: 'Close Window',
     docs: 'https://github.com/jlipps/simple-wd-spec#close-window',
-    validate(params, body) {},
-    handle({ session_id }, body) {
-        const session = ctx.sessions.get(session_id);
-
+    validate(args) {},
+    handle({ session }) {
         session.jsdom.window.close();
     },
 });
@@ -349,109 +340,107 @@ DELETE('/session/{session id}/window', {
 POST('/session/{session id}/window', {
     cmd: 'Switch To Window',
     docs: 'https://github.com/jlipps/simple-wd-spec#switch-to-window',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 GET('/session/{session id}/window/handles', {
     cmd: 'Get Window Handles',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-window-handles',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 POST('/session/{session id}/frame', {
     cmd: 'Switch To Frame',
     docs: 'https://github.com/jlipps/simple-wd-spec#switch-to-frame',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 POST('/session/{session id}/frame/parent', {
     cmd: 'Switch To Parent Frame',
     docs: 'https://github.com/jlipps/simple-wd-spec#switch-to-parent-frame',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 GET('/session/{session id}/window/rect', {
     cmd: 'Get Window Rect',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-window-rect',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 POST('/session/{session id}/window/rect', {
     cmd: 'Set Window Rect',
     docs: 'https://github.com/jlipps/simple-wd-spec#set-window-rect',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 POST('/session/{session id}/window/maximize', {
     cmd: 'Maximize Window',
     docs: 'https://github.com/jlipps/simple-wd-spec#maximize-window',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 POST('/session/{session id}/window/minimize', {
     cmd: 'Minimize Window',
     docs: 'https://github.com/jlipps/simple-wd-spec#minimize-window',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 POST('/session/{session id}/window/fullscreen', {
     cmd: 'Fullscreen Window',
     docs: 'https://github.com/jlipps/simple-wd-spec#fullscreen-window',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 POST('/session/{session id}/element', {
     cmd: 'Find Element',
     docs: 'https://github.com/jlipps/simple-wd-spec#find-element',
-    validate(params, body) {},
-    handle({ session_id }, { using, value }) {
-        const session = ctx.sessions.get(session_id);
-
+    validate(args) {},
+    handle({ session, using, value }) {
         switch (using) {
             case 'css selector': {
                 const el = session.jsdom.window.document.querySelector(value);
@@ -472,10 +461,8 @@ POST('/session/{session id}/element', {
 POST('/session/{session id}/elements', {
     cmd: 'Find Elements',
     docs: 'https://github.com/jlipps/simple-wd-spec#find-elements',
-    validate(params, body) {},
-    handle({ session_id }, { using, value }) {
-        const session = ctx.sessions.get(session_id);
-
+    validate(args) {},
+    handle({ session, using, value }) {
         const result = [];
 
         switch (using) {
@@ -512,11 +499,8 @@ POST('/session/{session id}/elements', {
 POST('/session/{session id}/element/{element id}/element', {
     cmd: 'Find Element From Element',
     docs: 'https://github.com/jlipps/simple-wd-spec#find-element-from-element',
-    validate(params, body) {},
-    handle({ session_id, element_id }, { using, value }) {
-        const session = ctx.sessions.get(session_id);
-        const element = session.getElement(element_id);
-
+    validate(args) {},
+    handle({ session, element, using, value }) {
         switch (using) {
             case 'css selector': {
                 const el = element.querySelector(value);
@@ -537,11 +521,8 @@ POST('/session/{session id}/element/{element id}/element', {
 POST('/session/{session id}/element/{element id}/elements', {
     cmd: 'Find Elements From Element',
     docs: 'https://github.com/jlipps/simple-wd-spec#find-elements-from-element',
-    validate(params, body) {},
-    handle({ session_id, element_id }, { using, value }) {
-        const session = ctx.sessions.get(session_id);
-        const element = session.getElement(element_id);
-
+    validate(args) {},
+    handle({ session, element, using, value }) {
         const result = [];
 
         switch (using) {
@@ -572,9 +553,8 @@ POST('/session/{session id}/element/{element id}/elements', {
 GET('/session/{session id}/element/active', {
     cmd: 'Get Active Element',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-active-element',
-    validate(params, body) {},
-    handle({ session_id }, body) {
-        const session = ctx.sessions.get(session_id);
+    validate(args) {},
+    handle({ session }) {
         const element = session.jsdom.window.document.activeElement;
         const id = session.getOrCreateElementId(element);
 
@@ -585,11 +565,8 @@ GET('/session/{session id}/element/active', {
 GET('/session/{session id}/element/{element id}/selected', {
     cmd: 'Is Element Selected',
     docs: 'https://github.com/jlipps/simple-wd-spec#is-element-selected',
-    validate(params, body) {},
-    handle({ session_id, element_id }, body) {
-        const session = ctx.sessions.get(session_id);
-        const element = session.getElement(element_id);
-
+    validate(args) {},
+    handle({ session, element }) {
         return element.matches(':checked');
     },
 });
@@ -597,11 +574,8 @@ GET('/session/{session id}/element/{element id}/selected', {
 GET('/session/{session id}/element/{element id}/attribute/{attribute name}', {
     cmd: 'Get Element Attribute',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-element-attribute',
-    validate(params, body) {},
-    handle({ session_id, element_id, attribute_name }, body) {
-        const session = ctx.sessions.get(session_id);
-        const element = session.getElement(element_id);
-
+    validate(args) {},
+    handle({ session, element, attribute_name }) {
         return element.getAttribute(attribute_name);
     },
 });
@@ -609,11 +583,8 @@ GET('/session/{session id}/element/{element id}/attribute/{attribute name}', {
 GET('/session/{session id}/element/{element id}/property/{property name}', {
     cmd: 'Get Element Property',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-element-property',
-    validate(params, body) {},
-    handle({ session_id, element_id, property_name }, body) {
-        const session = ctx.sessions.get(session_id);
-        const element = session.getElement(element_id);
-
+    validate(args) {},
+    handle({ session, element, property_name }) {
         return element[property_name];
     },
 });
@@ -621,10 +592,8 @@ GET('/session/{session id}/element/{element id}/property/{property name}', {
 GET('/session/{session id}/element/{element id}/css/{css property name}', {
     cmd: 'Get Element CSS Value',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-element-css-value',
-    validate(params, body) {},
-    handle({ session_id, element_id, css_property_name }, body) {
-        const session = ctx.sessions.get(session_id);
-        const element = session.getElement(element_id);
+    validate(args) {},
+    handle({ session, element, css_property_name }) {
         const styles = session.jsdom.window.getComputedStyle(element);
 
         return styles[css_property_name];
@@ -634,11 +603,8 @@ GET('/session/{session id}/element/{element id}/css/{css property name}', {
 GET('/session/{session id}/element/{element id}/text', {
     cmd: 'Get Element Text',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-element-text',
-    validate(params, body) {},
-    handle({ session_id, element_id }, body) {
-        const session = ctx.sessions.get(session_id);
-        const element = session.getElement(element_id);
-
+    validate(args) {},
+    handle({ session, element }) {
         // Note: JSDOM does not support .innerText
         // See: https://github.com/jsdom/jsdom/issues/1245#issuecomment-303884103
         return element.textContent.trim();
@@ -648,11 +614,8 @@ GET('/session/{session id}/element/{element id}/text', {
 GET('/session/{session id}/element/{element id}/name', {
     cmd: 'Get Element Tag Name',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-element-tag-name',
-    validate(params, body) {},
-    handle({ session_id, element_id }, body) {
-        const session = ctx.sessions.get(session_id);
-        const element = session.getElement(element_id);
-
+    validate(args) {},
+    handle({ session, element }) {
         return element.tagName;
     },
 });
@@ -660,25 +623,19 @@ GET('/session/{session id}/element/{element id}/name', {
 GET('/session/{session id}/element/{element id}/rect', {
     cmd: 'Get Element Rect',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-element-rect',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle({ session_id, element_id }, body) {
-        const session = ctx.sessions.get(session_id);
-        const element = session.getElement(element_id);
-    },
+    handle({ session, element }) {},
 });
 
 GET('/session/{session id}/element/{element id}/enabled', {
     cmd: 'Is Element Enabled',
     docs: 'https://github.com/jlipps/simple-wd-spec#is-element-enabled',
-    validate(params, body) {},
-    handle({ session_id, element_id }, body) {
-        const session = ctx.sessions.get(session_id);
-        const element = session.getElement(element_id);
-
+    validate(args) {},
+    handle({ session, element }) {
         return !element.disabled;
     },
 });
@@ -686,11 +643,8 @@ GET('/session/{session id}/element/{element id}/enabled', {
 POST('/session/{session id}/element/{element id}/click', {
     cmd: 'Element Click',
     docs: 'https://github.com/jlipps/simple-wd-spec#element-click',
-    validate(params, body) {},
-    handle({ session_id, element_id }, body) {
-        const session = ctx.sessions.get(session_id);
-        const element = session.getElement(element_id);
-
+    validate(args) {},
+    handle({ session, element }) {
         element.click();
     },
 });
@@ -698,11 +652,8 @@ POST('/session/{session id}/element/{element id}/click', {
 POST('/session/{session id}/element/{element id}/clear', {
     cmd: 'Element Clear',
     docs: 'https://github.com/jlipps/simple-wd-spec#element-clear',
-    validate(params, body) {},
-    handle({ session_id, element_id }, body) {
-        const session = ctx.sessions.get(session_id);
-        const element = session.getElement(element_id);
-
+    validate(args) {},
+    handle({ session, element }) {
         element.value = '';
     },
 });
@@ -710,11 +661,8 @@ POST('/session/{session id}/element/{element id}/clear', {
 POST('/session/{session id}/element/{element id}/value', {
     cmd: 'Element Send Keys',
     docs: 'https://github.com/jlipps/simple-wd-spec#element-send-keys',
-    validate(params, body) {},
-    handle({ session_id, element_id }, { text, value }) {
-        const session = ctx.sessions.get(session_id);
-        const element = session.getElement(element_id);
-
+    validate(args) {},
+    handle({ session, element, text, value }) {
         if (element.tagName !== 'INPUT') return;
 
         if (element.type === 'text') {
@@ -730,25 +678,17 @@ POST('/session/{session id}/element/{element id}/value', {
 GET('/session/{session id}/source', {
     cmd: 'Get Page Source',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-page-source',
-    validate(params, body) {},
-    handle({ session_id }, body) {
-        const session = ctx.sessions.get(session_id);
-        /** @type import('jsdom').JSDOM */
-        const jsdom = session.jsdom;
-
-        return jsdom.serialize();
+    validate(args) {},
+    handle({ session }) {
+        return session.jsdom.serialize();
     },
 });
 
 POST('/session/{session id}/execute/sync', {
     cmd: 'Execute Script',
     docs: 'https://github.com/jlipps/simple-wd-spec#execute-script',
-    validate(params, body) {},
-    handle({ session_id }, { script, args }) {
-        const session = ctx.sessions.get(session_id);
-        /** @type import('jsdom').JSDOM */
-        const jsdom = session.jsdom;
-
+    validate(args) {},
+    handle({ session, script, args }) {
         const { bestMatch } = stringSimilarity.findBestMatch(script, [...Object.values(SELENIUM_SCRIPTS)]);
 
         if (bestMatch.rating >= 0.99) {
@@ -765,7 +705,7 @@ POST('/session/{session id}/execute/sync', {
             }
         } else console.log(bestMatch.rating);
 
-        return jsdom.window.eval(`
+        return session.jsdom.window.eval(`
             (function() {
                 const args = ${JSON.stringify(args)}.map( arg => {
                     if( !arg || typeof arg !== 'object' ) return arg;
@@ -785,13 +725,9 @@ POST('/session/{session id}/execute/sync', {
 POST('/session/{session id}/execute/async', {
     cmd: 'Execute Async Script',
     docs: 'https://github.com/jlipps/simple-wd-spec#execute-async-script',
-    validate(params, body) {},
-    handle({ session_id }, { script, args }) {
-        const session = ctx.sessions.get(session_id);
-        /** @type import('jsdom').JSDOM */
-        const jsdom = session.jsdom;
-
-        return jsdom.window.eval(`
+    validate(args) {},
+    handle({ session, script, args }) {
+        return session.jsdom.window.eval(`
             (function() {
                 const args = ${JSON.stringify(args)}.map( arg => {
                     if( !arg || typeof arg !== 'object' ) return arg;
@@ -814,9 +750,8 @@ POST('/session/{session id}/execute/async', {
 GET('/session/{session id}/cookie', {
     cmd: 'Get All Cookies',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-all-cookies',
-    validate(params, body) {},
-    handle({ session_id }, { params }) {
-        const session = ctx.sessions.get(session_id);
+    validate(args) {},
+    handle({ session }) {
         const currentUrl = session.jsdom.window.location.href;
         const cookies = session.cookieJar.getCookiesSync(currentUrl);
 
@@ -830,9 +765,8 @@ GET('/session/{session id}/cookie', {
 GET('/session/{session id}/cookie/{cookie name}', {
     cmd: 'Get Named Cookie',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-named-cookie',
-    validate(params, body) {},
-    handle({ session_id, cookie_name }, body) {
-        const session = ctx.sessions.get(session_id);
+    validate(args) {},
+    handle({ session, cookie_name }) {
         const currentUrl = session.jsdom.window.location.href;
         const cookies = session.cookieJar.getCookiesSync(currentUrl);
         const cookie = cookies.find(c => c.key === cookie_name);
@@ -849,9 +783,8 @@ GET('/session/{session id}/cookie/{cookie name}', {
 POST('/session/{session id}/cookie', {
     cmd: 'Add Cookie',
     docs: 'https://github.com/jlipps/simple-wd-spec#add-cookie',
-    validate(params, body) {},
-    handle({ session_id }, { cookie }) {
-        const session = ctx.sessions.get(session_id);
+    validate(args) {},
+    handle({ session, cookie }) {
         const currentUrl = session.jsdom.window.location.href;
         let { name, value, domain, expiry, ...options } = cookie;
 
@@ -891,9 +824,8 @@ POST('/session/{session id}/cookie', {
 DELETE('/session/{session id}/cookie/{cookie name}', {
     cmd: 'Delete Cookie',
     docs: 'https://github.com/jlipps/simple-wd-spec#delete-cookie',
-    validate(params, body) {},
-    handle({ session_id, cookie_name }, body) {
-        const session = ctx.sessions.get(session_id);
+    validate(args) {},
+    handle({ session, cookie_name }) {
         const currentUrl = session.jsdom.window.location.href;
         const cookies = cookieJar.getCookiesSync(currentUrl);
         const cookie = cookies.find(c => c.key === cookie_name);
@@ -906,9 +838,8 @@ DELETE('/session/{session id}/cookie/{cookie name}', {
 DELETE('/session/{session id}/cookie', {
     cmd: 'Delete All Cookies',
     docs: 'https://github.com/jlipps/simple-wd-spec#delete-all-cookies',
-    validate(params, body) {},
-    handle({ session_id }, body) {
-        const session = ctx.sessions.get(session_id);
+    validate(args) {},
+    handle({ session }) {
         const currentUrl = session.jsdom.window.location.href;
         const cookies = cookieJar.getCookiesSync(currentUrl);
 
@@ -922,89 +853,89 @@ DELETE('/session/{session id}/cookie', {
 POST('/session/{session id}/actions', {
     cmd: 'Perform Actions',
     docs: 'https://github.com/jlipps/simple-wd-spec#perform-actions',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 DELETE('/session/{session id}/actions', {
     cmd: 'Release Actions',
     docs: 'https://github.com/jlipps/simple-wd-spec#release-actions',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 POST('/session/{session id}/alert/dismiss', {
     cmd: 'Dismiss Alert',
     docs: 'https://github.com/jlipps/simple-wd-spec#dismiss-alert',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 POST('/session/{session id}/alert/accept', {
     cmd: 'Accept Alert',
     docs: 'https://github.com/jlipps/simple-wd-spec#accept-alert',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 GET('/session/{session id}/alert/text', {
     cmd: 'Get Alert Text',
     docs: 'https://github.com/jlipps/simple-wd-spec#get-alert-text',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 POST('/session/{session id}/alert/text', {
     cmd: 'Send Alert Text',
     docs: 'https://github.com/jlipps/simple-wd-spec#send-alert-text',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 GET('/session/{session id}/screenshot', {
     cmd: 'Take Screenshot',
     docs: 'https://github.com/jlipps/simple-wd-spec#take-screenshot',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 GET('/session/{session id}/element/{element id}/screenshot', {
     cmd: 'Take Element Screenshot',
     docs: 'https://github.com/jlipps/simple-wd-spec#take-element-screenshot',
-    validate(params, body) {
+    validate(args) {
         console.error('Not implemented');
         // prettier-ignore
         return {/* not implemented */};
     },
-    handle(params, body) {},
+    handle(args) {},
 });
 
 const startServer = port => {
