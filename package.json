@@ -11,8 +11,8 @@
         "build:watch": "nodemon --ext js --exec 'npm run build'",
         "build:dev:macos": "rm -f ./bin/jsdom-webdriver-macos && mkdir -p ./bin && echo '#!/usr/bin/env node\nrequire(`../service.js`)' >> ./bin/jsdom-webdriver-macos && chmod +x ./bin/jsdom-webdriver-macos",
         "build:dev:linux": "rm -f ./bin/jsdom-webdriver-linux && mkdir -p ./bin && echo '#!/usr/bin/env node\nrequire(`../service.js`)' >> ./bin/jsdom-webdriver-linux && chmod +x ./bin/jsdom-webdriver-linux",
-        "test": "NODE_ENV=test node ./test.js",
-        "test:watch": "nodemon --ext js --exec 'npm test'",
+        "test": "jest ./test.js",
+        "test:watch": "jest ./test.js --watch",
         "test:watch:macos": "npm run build:dev:macos && npm run test:watch",
         "test:watch:linux": "npm run build:dev:linux && npm run test:watch"
     },
