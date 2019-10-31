@@ -266,4 +266,6 @@ test('interactive', async () => {
     await inputOther.clear();
     await inputOther.sendKeys('😳');
     await expect(inputOther.getAttribute('value')).resolves.toBe('😳');
+    await inputOther.sendKeys('😳');
+    await expect(inputOther.getAttribute('value')).resolves.toBe('😳😳');
 });
