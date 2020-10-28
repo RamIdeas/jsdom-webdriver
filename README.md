@@ -41,4 +41,4 @@ On Mac and Linux machines, for convenience, you can stay in one terminal and onl
 
 ### Recommendation: TDD
 
-Before implementing or modifying a command, I recommend you add a failing assertion to the tests. Selenium can be a bit unpredictable when it comes to which commands are executed by which method.
+Before implementing or modifying a command, I recommend you add a failing assertion to the tests. Selenium can be a bit unpredictable when it comes to which commands are executed by which method, so it'll definitely save you time and headache to do this first.
