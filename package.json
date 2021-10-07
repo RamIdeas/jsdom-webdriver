@@ -17,10 +17,9 @@
         "test:watch:linux": "npm run build:dev:linux && npm run test:watch"
     },
     "dependencies": {
+        "@testing-library/jest-dom": "^5.14.1",
         "arg": "^4.1.0",
         "express": "^4.17.1",
-        "is-docker": "^2.0.0",
-        "@testing-library/jest-dom": "^5.14.1",
         "jsdom": "^15.1.1",
         "selenium-webdriver": "^4.0.0-alpha.1",
         "string-similarity": "^3.0.0",
