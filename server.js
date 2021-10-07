@@ -5,7 +5,6 @@ const vm = require('vm');
 const express = require('express');
 const { JSDOM, ResourceLoader, CookieJar } = require('jsdom');
 const { Cookie } = require('tough-cookie');
-const isDocker = require('is-docker');
 const { toBeVisible } = require('@testing-library/jest-dom/dist/to-be-visible');
 const stringSimilarity = require('string-similarity');
 
