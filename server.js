@@ -6,7 +6,7 @@ const express = require('express');
 const { JSDOM, ResourceLoader, CookieJar } = require('jsdom');
 const { Cookie } = require('tough-cookie');
 const isDocker = require('is-docker');
-const { toBeVisible } = require('jest-dom/dist/to-be-visible');
+const { toBeVisible } = require('@testing-library/jest-dom/dist/to-be-visible');
 const stringSimilarity = require('string-similarity');
 
 const ELEMENT = 'element-6066-11e4-a52e-4f735466cecf';
@@ -27,7 +27,7 @@ const resourceLoader = new CustomResourceLoader({ strictSSL: false });
 
 https.globalAgent.options.rejectUnauthorized = false;
 
-const cacheSeleniumScriptForComparison = command => {
+const cacheSeleniumScriptForComparison = (command) => {
     const scriptPath = require.resolve(`selenium-webdriver/lib/atoms/${command}.js`);
     const script = fs.readFileSync(scriptPath, 'utf-8');
 
@@ -38,56 +38,58 @@ const SELENIUM_SCRIPTS = {};
 cacheSeleniumScriptForComparison('is-displayed');
 cacheSeleniumScriptForComparison('get-attribute');
 
-const REQUEST = (method, app) => (path, { cmd, validate, handle }) => {
-    path = path.replace(/\{(.*?)\}/g, (_, $1) => ':' + $1.replace(/\s/g, '_'));
+const REQUEST =
+    (method, app) =>
+    (path, { cmd, validate, handle }) => {
+        path = path.replace(/\{(.*?)\}/g, (_, $1) => ':' + $1.replace(/\s/g, '_'));
 
-    app[method](path, async (req, res) => {
-        console.log(`${req.method.padStart(6)} ${req.url}`);
-        const log = (label, json) => console.log(`      ${label.toUpperCase()}: ${JSON.stringify(json)}`);
-        log(`PARAMS`, req.params);
-        log(
-            `BODY`,
-            req.body.script && req.body.script.length > 250
-                ? { ...req.body, script: req.body.script.substr(0, 250) + '...' }
-                : req.body,
-        );
+        app[method](path, async (req, res) => {
+            console.log(`${req.method.padStart(6)} ${req.url}`);
+            const log = (label, json) => console.log(`      ${label.toUpperCase()}: ${JSON.stringify(json)}`);
+            log(`PARAMS`, req.params);
+            log(
+                `BODY`,
+                req.body.script && req.body.script.length > 250
+                    ? { ...req.body, script: req.body.script.substr(0, 250) + '...' }
+                    : req.body,
+            );
 
-        const { session_id, element_id } = req.params;
-        const session = ctx.sessions.get(session_id);
-        const element = session && session.getElement(element_id);
-        const args = { ...req.params, ...req.body, session, element };
-        const error = await validate(args);
+            const { session_id, element_id } = req.params;
+            const session = ctx.sessions.get(session_id);
+            const element = session && session.getElement(element_id);
+            const args = { ...req.params, ...req.body, session, element };
+            const error = await validate(args);
 
-        if (error !== undefined) {
-            const {
-                status = 500,
-                type = 'unsupported operation',
-                message = `This operation (${cmd}) is not supported yet`,
-            } = error;
+            if (error !== undefined) {
+                const {
+                    status = 500,
+                    type = 'unsupported operation',
+                    message = `This operation (${cmd}) is not supported yet`,
+                } = error;
 
-            return res.status(status).json({
-                value: { error: type, message },
-            });
-        }
+                return res.status(status).json({
+                    value: { error: type, message },
+                });
+            }
 
-        try {
-            const result = await handle(args);
-            log('RESULT', result);
+            try {
+                const result = await handle(args);
+                log('RESULT', result);
 
-            return res.json({ value: result });
-        } catch (err) {
-            const {
-                status = 500,
-                type = 'unknown error',
-                message = 'An unknown error occurred handling the command',
-            } = err;
+                return res.json({ value: result });
+            } catch (err) {
+                const {
+                    status = 500,
+                    type = 'unknown error',
+                    message = 'An unknown error occurred handling the command',
+                } = err;
 
-            return res.status(status).json({
-                value: { error: type, message: `${message}\n${err.stack}` },
-            });
-        }
-    });
-};
+                return res.status(status).json({
+                    value: { error: type, message: `${message}\n${err.stack}` },
+                });
+            }
+        });
+    };
 
 const app = express().use(express.json());
 
@@ -138,7 +140,7 @@ POST('/session', {
                 window[ELEMENTS_TO_ID] = window[ELEMENTS_TO_ID] || new WeakMap();
                 window.__GET_ELEMENT__ =
                     window.__GET_ELEMENT__ ||
-                    (id => {
+                    ((id) => {
                         const map = this.jsdom.window[ID_TO_ELEMENTS];
 
                         if (map) {
@@ -490,7 +492,7 @@ POST('/session/{session id}/elements', {
         //     console.log(root.innerHTML);
         // }
 
-        return result.map(id => {
+        return result.map((id) => {
             return { [ELEMENT]: id };
         });
     },
@@ -544,7 +546,7 @@ POST('/session/{session id}/element/{element id}/elements', {
             }
         }
 
-        return result.map(id => {
+        return result.map((id) => {
             return { [ELEMENT]: id };
         });
     },
@@ -755,7 +757,7 @@ GET('/session/{session id}/cookie', {
         const currentUrl = session.jsdom.window.location.href;
         const cookies = session.cookieJar.getCookiesSync(currentUrl);
 
-        return cookies.map(cookie => {
+        return cookies.map((cookie) => {
             const { key: name, value, path, domain, secure, httpOnly, maxAge: expiry } = cookie;
             return { name, value, path, domain, secure, httpOnly, expiry };
         });
@@ -769,7 +771,7 @@ GET('/session/{session id}/cookie/{cookie name}', {
     handle({ session, cookie_name }) {
         const currentUrl = session.jsdom.window.location.href;
         const cookies = session.cookieJar.getCookiesSync(currentUrl);
-        const cookie = cookies.find(c => c.key === cookie_name);
+        const cookie = cookies.find((c) => c.key === cookie_name);
 
         if (!cookie) {
             throw { status: 500, type: 'no such cookie', message: `No cookie exists with key: '${cookie_name}` };
@@ -828,7 +830,7 @@ DELETE('/session/{session id}/cookie/{cookie name}', {
     handle({ session, cookie_name }) {
         const currentUrl = session.jsdom.window.location.href;
         const cookies = cookieJar.getCookiesSync(currentUrl);
-        const cookie = cookies.find(c => c.key === cookie_name);
+        const cookie = cookies.find((c) => c.key === cookie_name);
 
         cookie.setMaxAge(-1);
         cookie.value = null;
@@ -938,8 +940,8 @@ GET('/session/{session id}/element/{element id}/screenshot', {
     handle(args) {},
 });
 
-const startServer = port => {
-    return app.listen(port, function() {
+const startServer = (port) => {
+    return app.listen(port, function () {
         console.log('Server started on port ' + this.address().port);
     });
 };
