@@ -20,7 +20,7 @@
         "@testing-library/jest-dom": "^5.14.1",
         "arg": "^4.1.0",
         "express": "^4.17.1",
-        "jsdom": "^15.1.1",
+        "jsdom": "^16.5.0",
         "selenium-webdriver": "^4.0.0-alpha.1",
         "string-similarity": "^3.0.0",
         "tough-cookie": "^3.0.1"
